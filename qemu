@@ -1,0 +1,48 @@
+#!/bin/sh
+DIR=/Users/sunip/.ubuntu
+DISPLAYOPT="-display none"
+NODEBUG="&> /dev/null"
+
+HOSTID=""
+DEVID=""
+
+while getopts 'mv:d:sh' c
+do
+  case $c in
+    m) DISPLAYOPT="-device ramfb" ;;
+    v) HOSTID=$OPTARG;;
+    d) DEVID=$OPTARG;;
+    s) NODEBUG="";;
+    h) echo "Usage: $0 [-m (Turn on display output) 
+                        -v (USB host ID) 
+                        -d (USB device address) 
+                        -h (Help)]" && exit;;
+  esac
+done
+
+if ([ ! -z "$HOSTID" ] && [ ! -z "$DEVID" ]);
+then
+    USBOPT="-device usb-host,hostbus=$HOSTID,hostaddr=$DEVID"
+fi
+
+qemu-system-aarch64 \
+$DISPLAYOPT \
+-M virt,highmem=no \
+-accel hvf \
+-cpu host \
+-smp 2 \
+-m 2G \
+-bios $DIR/QEMU_EFI.fd \
+-device qemu-xhci \
+-device usb-kbd \
+-device usb-tablet \
+-nic user,model=virtio,hostfwd=tcp::2026-:22 \
+-rtc base=utc,clock=host \
+-drive file=$DIR/hda.qcow2,if=none,id=boot,cache=writethrough \
+-device usb-storage,drive=fat32 -drive file=fat:rw:$DIR/code,id=fat32,format=vvfat,if=none \
+-device virtio-blk,drive=boot,serial=boot \
+$USBOPT \
+-device intel-hda \
+-device hda-duplex  \
+&> /dev/null \
+&
