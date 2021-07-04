@@ -1,7 +1,11 @@
 #!/bin/sh
-DIR=/Users/sunip/.ubuntu
+
+[ ! -d "/Applications/ACVM.app" ] && echo "ACVM.app not present in /Applications, exiting." && exit
+
+APPDIR=/Applications/ACVM.app/Contents/Resources/
+USERDIR=/Users/sunip/.ubuntu
 DISPLAYOPT="-display none"
-NODEBUG="&> /dev/null"
+NODEBUG="/dev/null"
 
 HOSTID=""
 DEVID=""
@@ -12,10 +16,11 @@ do
     m) DISPLAYOPT="-device ramfb" ;;
     v) HOSTID=$OPTARG;;
     d) DEVID=$OPTARG;;
-    s) NODEBUG="";;
+    s) NODEBUG="/dev/stderr";;
     h) echo "Usage: $0 [-m (Turn on display output) 
                         -v (USB host ID) 
                         -d (USB device address) 
+                        -s (Turn on debug output)
                         -h (Help)]" && exit;;
   esac
 done
@@ -25,24 +30,25 @@ then
     USBOPT="-device usb-host,hostbus=$HOSTID,hostaddr=$DEVID"
 fi
 
-qemu-system-aarch64 \
+$APPDIR/qemu-system-aarch64 \
 $DISPLAYOPT \
 -M virt,highmem=no \
 -accel hvf \
 -cpu host \
 -smp 2 \
 -m 2G \
--bios $DIR/QEMU_EFI.fd \
+-bios $APPDIR/QEMU_EFI.fd \
 -device qemu-xhci \
 -device usb-kbd \
 -device usb-tablet \
 -nic user,model=virtio,hostfwd=tcp::2026-:22 \
 -rtc base=utc,clock=host \
--drive file=$DIR/hda.qcow2,if=none,id=boot,cache=writethrough \
--device usb-storage,drive=fat32 -drive file=fat:rw:$DIR/code,id=fat32,format=vvfat,if=none \
+-drive file=$USERDIR/ubuntu.qcow2,if=none,id=boot,cache=writethrough \
+-device usb-storage,drive=fat32 -drive file=fat:rw:$USERDIR/code,id=fat32,format=vvfat,if=none \
 -device virtio-blk,drive=boot,serial=boot \
 $USBOPT \
 -device intel-hda \
--device hda-duplex  \
-&> /dev/null \
+-device hda-duplex \
+&> $NODEBUG \
 &
+# -cdrom /Users/sunip/Downloads/ubuntu-2004.iso \
